@@ -65,6 +65,8 @@
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   box-shadow: var(--shadow-1);
+  /* Обрезаем обложку и полоску по скруглению карточки — иначе на стыке торчат «ушки» */
+  overflow: hidden;
   transition: transform var(--dur-mid) var(--ease), box-shadow var(--dur-mid) var(--ease),
     border-color var(--dur-mid) var(--ease);
 }
@@ -96,15 +98,8 @@
   transform: scale(1.03);
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto 0;
-  height: 4px;
-  border-radius: var(--r-md) var(--r-md) 0 0;
-  background: var(--track-color, var(--primary));
-}
-
+/* Цветной маркер трека живёт в подписи .card__track: отдельная полоска сверху
+   не может повторить радиус 12px на своей высоте и давала «срезанный» угол */
 .card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-2);
@@ -135,6 +130,8 @@
 .card__title {
   font-size: var(--fs-20);
   line-height: 1.3;
+  /* Ровно две строки под заголовок: карточки в ряду не «прыгают» по высоте */
+  min-height: calc(1.3em * 2);
 }
 
 .card__title a {
@@ -151,6 +148,12 @@
   color: var(--text-muted);
   font-size: var(--fs-14);
   flex: 1;
+  /* Анонс не длиннее трёх строк — иначе карточки ряда разъезжаются */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
 }
 
 .card__meta {

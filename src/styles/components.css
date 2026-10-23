@@ -179,6 +179,14 @@
   background: var(--primary-soft);
 }
 
+/* Выбранная карточка под курсором остаётся «нажатой», а не сливается с hover */
+.account--on:hover,
+.account--on:has(input:checked) {
+  border-color: var(--primary-strong);
+  background: var(--primary-soft);
+  box-shadow: 0 0 0 1px var(--primary) inset;
+}
+
 .account input {
   position: absolute;
   opacity: 0;
