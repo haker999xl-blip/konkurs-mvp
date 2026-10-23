@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Конкурс — платформа школьных конкурсов · презентация</title>
+<style>
+  :root {
+    --ink: #1E4D45;
+    --ink-deep: #143A34;
+    --accent: #8F5416;
+    --paper: #F4F2ED;
+    --surface: #FFFFFF;
+    --muted: #4E5C57;
+    --line: #DED9CF;
+    --display: Georgia, 'Times New Roman', serif;
+    --text: 'Manrope', 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--paper);
+    color: var(--ink-deep);
+    font-family: var(--text);
+    overflow: hidden;
+  }
+  .deck { height: 100%; display: grid; grid-template-rows: 1fr auto; }
+
+  .slide {
+    display: none;
+    padding: clamp(28px, 6vw, 88px) clamp(24px, 7vw, 104px);
+    height: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    width: 100%;
+    overflow: auto;
+    animation: enter 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .slide.is-active { display: flex; flex-direction: column; justify-content: center; }
+  @keyframes enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .eyebrow {
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--accent);
+    margin: 0 0 20px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(2.1rem, 5.4vw, 4.4rem);
+    line-height: 1.06;
+    margin: 0 0 24px;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: clamp(1.7rem, 3.6vw, 3rem);
+    line-height: 1.12;
+    margin: 0 0 28px;
+  }
+  h3 { font-size: 1rem; margin: 0 0 6px; }
+  p { font-size: clamp(1rem, 1.5vw, 1.3rem); line-height: 1.55; margin: 0 0 18px; max-width: 62ch; }
+  .lead { color: var(--muted); }
+  .small { font-size: 0.95rem; color: var(--muted); }
+  .grid { display: grid; gap: 20px; }
+  .grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--ink);
+    border-radius: 12px;
+    padding: 22px 24px;
+  }
+  .card p { font-size: 1rem; margin: 0; color: var(--muted); }
+  .num {
+    font-family: var(--display);
+    font-size: clamp(2rem, 4vw, 3.2rem);
+    line-height: 1;
+    color: var(--ink);
+    margin-bottom: 10px;
+  }
+  .num small { font-family: var(--text); font-size: 0.9rem; color: var(--muted); }
+  ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  ul li { position: relative; padding-left: 26px; font-size: clamp(1rem, 1.4vw, 1.2rem); line-height: 1.45; }
+  ul li::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0.6em;
+    width: 14px; height: 2px;
+    background: var(--accent);
+  }
+  .tag {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: #E3EDEA;
+    color: var(--ink);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin: 0 6px 6px 0;
+  }
+  .flow { display: grid; gap: 14px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 8px; }
+  .flow div {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 0.95rem;
+  }
+  .flow b { display: block; font-family: var(--display); font-size: 1.4rem; color: var(--accent); margin-bottom: 4px; }
+  .title-slide h1 { font-size: clamp(2.6rem, 7vw, 5.6rem); }
+  .rule { width: 72px; height: 4px; background: var(--accent); margin: 0 0 28px; }
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px;
+    padding: 12px clamp(24px, 7vw, 104px);
+    border-top: 1px solid var(--line);
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .footer kbd {
+    font-family: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1px 6px;
+    background: var(--surface);
+    font-size: 0.75rem;
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots button {
+    width: 9px; height: 9px; border-radius: 50%;
+    border: 0; padding: 0; cursor: pointer;
+    background: #C9C4B8;
+  }
+  .dots button[aria-current="true"] { background: var(--ink); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.98rem; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+  .quote { border-left: 4px solid var(--accent); padding-left: 20px; font-family: var(--display); font-size: clamp(1.2rem, 2vw, 1.6rem); line-height: 1.4; }
+  @media (max-width: 900px) {
+    .grid--2, .grid--3, .flow { grid-template-columns: 1fr; }
+    .slide { justify-content: flex-start !important; }
+  }
+  @media print {
+    body { overflow: visible; background: #fff; }
+    .footer, .dots { display: none; }
+    .slide { display: block !important; page-break-after: always; height: auto; padding: 24mm 18mm; }
+  }
+</style>
+</head>
+<body>
+<div class="deck">
+  <main id="deck">
+
+    <section class="slide title-slide">
+      <p class="eyebrow">Хакатон · MVP за 24 часа</p>
+      <h1>Конкурс</h1>
+      <div class="rule"></div>
+      <p class="lead" style="font-size: clamp(1.1rem, 2vw, 1.5rem);">
+        Платформа школьных конкурсов для 7–8 классов: афиша, заявки, баллы, рейтинг и дипломы.
+      </p>
+      <p class="small">Без сервера · всё в браузере · демо на двух вкладках</p>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Проблема</p>
+      <h2>Конкурсы теряются между чатами и бумагой</h2>
+      <div class="grid grid--3">
+        <div class="card">
+          <h3>Ученик</h3>
+          <p>Не знает, что происходит в школе, и узнаёт о конкурсе после дедлайна.</p>
+        </div>
+        <div class="card">
+          <h3>Результат</h3>
+          <p>Баллы и дипломы приходят словами в чате — их не найти через месяц.</p>
+        </div>
+        <div class="card">
+          <h3>Учитель</h3>
+          <p>Сводит участие и итоги вручную в Excel: два часа вместо пятнадцати секунд.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Решение</p>
+      <h2>Один адрес вместо десяти чатов</h2>
+      <ul>
+        <li><b>Афиша.</b> Все конкурсы с дедлайнами, направлениями и числом заявок.</li>
+        <li><b>Запись в один клик.</b> Заявка сразу попадает организатору.</li>
+        <li><b>Личный результат.</b> Баллы, место в рейтинге, комментарий жюри, диплом.</li>
+        <li><b>Порядок у организатора.</b> Очередь заявок, импорт списков, отчёт в Excel.</li>
+      </ul>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Для кого</p>
+      <h2>Две роли — один продукт</h2>
+      <div class="grid grid--2">
+        <div class="card">
+          <h3>Ученик 7–8 класса</h3>
+          <p>Найти конкурс и записаться → видеть статус, баллы и место → скачать диплом.</p>
+          <p style="margin-top:10px;"><span class="tag">6 демо-аккаунтов</span></p>
+        </div>
+        <div class="card">
+          <h3>Учитель-организатор</h3>
+          <p>Создать конкурс → подтвердить участия и выставить баллы → выгрузить отчёт.</p>
+          <p style="margin-top:10px;"><span class="tag">импорт CSV</span><span class="tag">отчёт CSV</span></p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Демо</p>
+      <h2>Две вкладки: учитель и ученик</h2>
+      <div class="flow">
+        <div><b>1</b>Ученик записывается на конкурс</div>
+        <div><b>2</b>Учитель видит заявку и ставит баллы</div>
+        <div><b>3</b>У ученика баллы, прогресс и место меняются сами</div>
+        <div><b>4</b>Диплом и отчёт — в один клик</div>
+      </div>
+      <p class="small" style="margin-top:20px;">Перед показом: админ-панель → «Сбросить демо».</p>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Вау-фича</p>
+      <h2>Живой пересчёт результата</h2>
+      <p class="lead">Учитель подтверждает участие — у ученика во второй вкладке анимированно обновляются баллы, прогресс и позиция в рейтинге.</p>
+      <div class="grid grid--3">
+        <div class="card"><div class="num">243 → 338</div><p>баллов</p></div>
+        <div class="card"><div class="num">62 → 87<small>%</small></div><p>прогресс до максимума</p></div>
+        <div class="card"><div class="num">#1</div><p>место в рейтинге школы</p></div>
+      </div>
+      <p class="small" style="margin-top:20px;">Синхронизация — BroadcastChannel + storage-событие. Анимация 520 мс, отключается при prefers-reduced-motion.</p>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Метрики</p>
+      <h2>Что считается успехом</h2>
+      <div class="grid grid--2">
+        <div class="card"><div class="num">≤ 3</div><p>клика от афиши до скачанного диплома</p></div>
+        <div class="card"><div class="num">≤ 15<small> сек</small></div><p>отчёт по школе вместо двух часов в Excel</p></div>
+        <div class="card"><div class="num">7</div><p>типов ошибок импорта с понятной причиной</p></div>
+        <div class="card"><div class="num">0</div><p>серверных зависимостей: демо живёт в браузере</p></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Под капотом</p>
+      <h2>Простая архитектура, которую можно развивать</h2>
+      <div class="grid grid--2">
+        <div class="card">
+          <h3>Стек</h3>
+          <p>Vite 8 · React 19 · TypeScript 6 · React Router 7 · CSS без UI-библиотек · oxlint</p>
+        </div>
+        <div class="card">
+          <h3>Данные</h3>
+          <p>Слой за интерфейсом Repository: сегодня localStorage, завтра REST — страницы не меняются.</p>
+        </div>
+      </div>
+      <div class="grid grid--2" style="margin-top:20px;">
+        <div class="card">
+          <h3>Импорт</h3>
+          <p>Предпросмотр — «сухой» прогон через Proxy-репозиторий: ничего не пишется, пока не подтвердили.</p>
+        </div>
+        <div class="card">
+          <h3>Отчёт</h3>
+          <p>CSV с BOM, точкой с запятой и CRLF — Excel открывает двойным щелчком.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Дизайн</p>
+      <h2>Школьный стенд достижений</h2>
+      <div class="grid grid--3">
+        <div class="card" style="border-left-color:#1E4D45;"><h3>Хвоя</h3><p>#1E4D45 — основа, спокойствие и доверие.</p></div>
+        <div class="card" style="border-left-color:#8F5416;"><h3>Янтарь</h3><p>#8F5416 — акцент: дедлайны, медали, фокус.</p></div>
+        <div class="card" style="border-left-color:#DED9CF;"><h3>Бумага</h3><p>#F4F2ED — фон, тёплый и не белый.</p></div>
+      </div>
+      <p class="small" style="margin-top:24px;">Georgia для заголовков, Manrope для текста. Контраст ≥ 4.5:1, сетка 8 px, без градиентов и стеклянных карточек.</p>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Проверено</p>
+      <h2>Что уже работает</h2>
+      <table>
+        <tr><th>Проверка</th><th>Результат</th></tr>
+        <tr><td>Типы и линтер</td><td>tsc — 0 ошибок, oxlint — 0 ошибок</td></tr>
+        <tr><td>Сборка</td><td>vite build — 47 модулей, ~100 КБ gzip</td></tr>
+        <tr><td>Синхронизация вкладок</td><td>баллы 243 → 338 без перезагрузки</td></tr>
+        <tr><td>Импорт с ошибками</td><td>2 принято, 5 отклонено с причинами</td></tr>
+        <tr><td>Отчёт</td><td>BOM + «;» + CRLF, 14 строк</td></tr>
+        <tr><td>Ширины</td><td>375 / 768 / 1280 без горизонтального скролла</td></tr>
+      </table>
+    </section>
+
+    <section class="slide">
+      <p class="eyebrow">Дальше</p>
+      <h2>Что добавляем после хакатона</h2>
+      <ul>
+        <li>Бэкенд и вход через школьную учётную запись.</li>
+        <li>PDF-дипломы и печать без ручной подготовки.</li>
+        <li>Уведомления о дедлайнах и результатах.</li>
+        <li>Экспорт в Excel и интеграция с расписанием.</li>
+      </ul>
+      <p class="quote" style="margin-top:28px;">Конкурсы должны находить ученика, а не наоборот.</p>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span>Конкурс · платформа школьных конкурсов · 7–8 классы</span>
+    <span><kbd>←</kbd> <kbd>→</kbd> слайды · <kbd>F</kbd> полный экран</span>
+    <div class="dots" id="dots" role="tablist" aria-label="Слайды"></div>
+  </footer>
+</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const dots = document.getElementById('dots');
+  let index = 0;
+
+  slides.forEach((slide, i) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.setAttribute('aria-label', 'Слайд ' + (i + 1));
+    dot.addEventListener('click', () => show(i));
+    dots.appendChild(dot);
+  });
+
+  function show(next) {
+    index = Math.max(0, Math.min(slides.length - 1, next));
+    slides.forEach((slide, i) => slide.classList.toggle('is-active', i === index));
+    [...dots.children].forEach((dot, i) => dot.setAttribute('aria-current', String(i === index)));
+    location.hash = String(index + 1);
+  }
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowRight' || event.key === 'PageDown' || event.key === ' ') {
+      event.preventDefault();
+      show(index + 1);
+    } else if (event.key === 'ArrowLeft' || event.key === 'PageUp') {
+      event.preventDefault();
+      show(index - 1);
+    } else if (event.key === 'Home') {
+      show(0);
+    } else if (event.key === 'End') {
+      show(slides.length - 1);
+    } else if (event.key.toLowerCase() === 'f') {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen?.();
+    }
+  });
+
+  const fromHash = Number(location.hash.replace('#', ''));
+  show(Number.isFinite(fromHash) && fromHash > 0 ? fromHash - 1 : 0);
+</script>
+</body>
+</html>
