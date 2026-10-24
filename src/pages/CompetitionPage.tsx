@@ -1,24 +1,23 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useData } from '../state/useData';
-import { useSession } from '../state/session';
-import { getRepository } from '../data/localRepository';
+import { useStore } from '../state/store';
+
+import { api, ApiError } from '../data/api';
 import {
   PARTICIPATION_LABEL,
   STATUS_LABEL,
   deadlineLabel,
   formatRange,
-  getCompetitionStatus,
-  todayIso,
+getCompetitionStatus,
   trackLabel,
 } from '../data/utils';
 
 /** Страница конкурса: описание, сроки, заявка ученика, список участников для админа. */
 export function CompetitionPage() {
   const { id = '' } = useParams();
-  const { user } = useSession();
-  const { competitions, participations, users, refresh } = useData();
+  const { user, competitions, participations, users, notify } = useStore();
   const [justJoined, setJustJoined] = useState(false);
+  const [joinError, setJoinError] = useState('');
 
   const competition = competitions.find((c) => c.id === id);
 
@@ -36,8 +35,8 @@ export function CompetitionPage() {
     users.find((u) => u.id === studentId)?.name ?? 'Без имени';
 
   if (!competition) {
-    return (
-      <div className="container">
+return (
+      <div>
         <div className="empty">
           <h1 className="empty__title">Конкурс не найден</h1>
           <p className="empty__text">Возможно, его удалили. Вернитесь на афишу.</p>
@@ -52,23 +51,27 @@ export function CompetitionPage() {
   const status = getCompetitionStatus(competition);
   const canJoin = user?.role === 'student' && status !== 'finished' && !myEntry;
 
-  /** Заявка создаётся со статусом pending: баллы начислит админ (вау-фича). */
-  const join = () => {
+  /**
+   * Заявка создаётся со статусом pending: баллы начислит организатор.
+   * При подтверждении сервер сам создаст достижение категории «олимпиада».
+   */
+  const join = async () => {
     if (!user || !canJoin) return;
-    getRepository().createParticipation({
-      competitionId: competition.id,
-      studentId: user.id,
-      status: 'pending',
-      score: 0,
-      registeredAt: todayIso(),
-      comment: '',
-    });
-    setJustJoined(true);
-    refresh();
+    // Повторная попытка начинается с чистого листа: старые ошибки и статус не должны висеть.
+    setJoinError('');
+    setJustJoined(false);
+    try {
+      await api.joinCompetition(competition.id);
+      setJustJoined(true);
+      notify();
+    } catch (error) {
+      setJustJoined(false);
+      setJoinError(error instanceof ApiError ? error.message : 'Не удалось записаться');
+    }
   };
 
-  return (
-    <div className="container">
+return (
+    <div>
       <nav className="crumbs" aria-label="Хлебные крошки">
         <Link to="/">Афиша</Link>
         <span aria-hidden="true">/</span>
@@ -146,9 +149,14 @@ export function CompetitionPage() {
                   <p className="join__note">
                     Заявка уйдёт организатору. Он подтвердит участие и выставит баллы.
                   </p>
-                  <button className="btn btn--primary" type="button" onClick={join}>
+<button className="btn btn--primary" type="button" onClick={join}>
                     Участвовать
                   </button>
+                  {joinError && (
+                    <p className="field-error" role="alert">
+                      {joinError}
+                    </p>
+                  )}
                   {justJoined && (
                     <p className="join__flash" role="status">
                       Заявка отправлена

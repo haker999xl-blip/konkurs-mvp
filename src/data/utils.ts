@@ -69,11 +69,11 @@ export function deadlineLabel(c: Competition, today = todayIso()): string {
 
 export function trackLabel(track: Track): string {
   const map: Record<Track, string> = {
-    science: 'Наука',
-    art: 'Творчество',
+    science: 'Физика',
+    math: 'Математика',
     sport: 'Спорт',
     language: 'Языки',
-    tech: 'Технологии',
+    tech: 'Информатика',
   };
   return map[track];
 }

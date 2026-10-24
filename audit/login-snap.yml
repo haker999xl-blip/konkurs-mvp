@@ -1,0 +1,76 @@
+- generic [ref=e3]:
+  - main [ref=e4]:
+    - main [ref=e6]:
+      - region [ref=e7]:
+        - paragraph [ref=e8]: Достижения лицея
+        - heading "Достижения учеников — в одном месте" [level=1] [ref=e9]
+        - paragraph [ref=e10]: Ученик заявляет достижение сам, организатор проверяет — баллы сразу идут в рейтинг лицея и класса.
+        - list [ref=e11]:
+          - listitem [ref=e12]: Категории, баллы и подтверждение
+          - listitem [ref=e13]: Рейтинг по лицею и по классам
+          - listitem [ref=e14]: Олимпиады по физике, математике и информатике
+      - generic [ref=e15]:
+        - tablist "Способ входа" [ref=e16]:
+          - tab "Быстрый вход для показа" [selected] [ref=e17] [cursor=pointer]:
+            - text: Быстрый вход
+            - generic [ref=e18]: для показа
+          - tab "Вход по паролю как настоящий" [ref=e19] [cursor=pointer]:
+            - text: Вход по паролю
+            - generic [ref=e20]: как настоящий
+        - generic [ref=e21]:
+          - paragraph [ref=e22]: "Выберите аккаунт — один клик и вы в нужной роли. Демо-пароль всех аккаунтов: demo1234"
+          - group "Ученик" [ref=e28]:
+            - generic [ref=e30] [cursor=pointer]:
+              - radio "Алина Ветрова 7А класс"
+              - generic [aria-hidden] [ref=e31]: А
+              - generic [ref=e32]:
+                - generic [ref=e33]: Алина Ветрова
+                - generic [ref=e34]: 7А класс
+            - generic [ref=e35] [cursor=pointer]:
+              - radio "Вера Тимофеева 7Б класс"
+              - generic [aria-hidden] [ref=e36]: В
+              - generic [ref=e37]:
+                - generic [ref=e38]: Вера Тимофеева
+                - generic [ref=e39]: 7Б класс
+            - generic [ref=e40] [cursor=pointer]:
+              - radio "Игорь Лебедев 8А класс"
+              - generic [aria-hidden] [ref=e41]: И
+              - generic [ref=e42]:
+                - generic [ref=e43]: Игорь Лебедев
+                - generic [ref=e44]: 8А класс
+            - generic [ref=e45] [cursor=pointer]:
+              - radio "Мария Соколова 8А класс · основной демо-аккаунт"
+              - generic [aria-hidden] [ref=e46]: М
+              - generic [ref=e47]:
+                - generic [ref=e48]: Мария Соколова
+                - generic [ref=e49]: 8А класс · основной демо-аккаунт
+            - generic [ref=e50] [cursor=pointer]:
+              - radio "Насыйров Адель 8А класс"
+              - generic [aria-hidden] [ref=e51]: Н
+              - generic [ref=e52]:
+                - generic [ref=e53]: Насыйров Адель
+                - generic [ref=e54]: 8А класс
+            - generic [ref=e55] [cursor=pointer]:
+              - radio "Дмитрий Ковалёв 8Б класс"
+              - generic [aria-hidden] [ref=e56]: Д
+              - generic [ref=e57]:
+                - generic [ref=e58]: Дмитрий Ковалёв
+                - generic [ref=e59]: 8Б класс
+            - generic [ref=e60] [cursor=pointer]:
+              - radio "Кирилл Орлов 8Б класс"
+              - generic [aria-hidden] [ref=e61]: К
+              - generic [ref=e62]:
+                - generic [ref=e63]: Кирилл Орлов
+                - generic [ref=e64]: 8Б класс
+          - group "Организатор" [ref=e65]:
+            - generic [ref=e67] [cursor=pointer]:
+              - radio "Анна Николаевна Физика, классный руководитель 8А" [checked]
+              - generic [aria-hidden] [ref=e68]: А
+              - generic [ref=e69]:
+                - generic [ref=e70]: Анна Николаевна
+                - generic [ref=e71]: Физика, классный руководитель 8А
+          - button "Войти" [ref=e23] [cursor=pointer]
+  - contentinfo [ref=e24]:
+    - generic [ref=e25]:
+      - generic [ref=e26]: Достижения — платформа достижений учеников лицея
+      - generic [ref=e27]: Данные хранятся в базе SQLite на сервере.

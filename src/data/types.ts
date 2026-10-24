@@ -7,7 +7,7 @@
 /** Роль пользователя. Ученик и организатор (учитель). */
 export type Role = 'student' | 'teacher';
 
-/** Пользователь платформы (симуляция аккаунта, без пароля). */
+/** Пользователь платформы. Пароль хранится только хешем на сервере и в клиент не приходит. */
 export interface User {
   id: string;
   /** Отображаемое имя: «Мария Соколова». */
@@ -19,11 +19,44 @@ export interface User {
   subject: string;
 }
 
+/**
+ * Категория достижения — ядро модели: ученик сам заявляет, что добился.
+ * Многоточие и «волонтёрство» из ТЗ, плюс «проект» для инженерных работ.
+ */
+export type AchievementCategory = 'academic' | 'olympiad' | 'project' | 'volunteer';
+
+/** Статус достижения: заявлено учеником → проверено организатором. */
+export type AchievementStatus = 'pending' | 'approved' | 'rejected';
+
+/** Откуда пришло достижение: сам ученик, организатор или подтверждённый конкурс. */
+export type AchievementSource = 'student' | 'admin' | 'contest';
+
+/** Достижение ученика — центральная сущность платформы. */
+export interface Achievement {
+  id: string;
+  studentId: string;
+  category: AchievementCategory;
+  /** Что за достижение: «Призёр муниципального этапа по физике». */
+  title: string;
+  /** Дата получения, YYYY-MM-DD. Не может быть в будущем. */
+  awardedOn: string;
+  /** Баллы, которые идут в рейтинг после подтверждения. */
+  points: number;
+  status: AchievementStatus;
+  source: AchievementSource;
+  /** Комментарий организатора: почему подтвердили или отклонили. */
+  comment: string;
+  /** ISO-таймстемп создания. */
+  createdAt: string;
+  /** ISO-таймстемп проверки. Пусто, пока pending. */
+  reviewedAt: string | null;
+}
+
 /** Жизненный цикл конкурса. Производное состояние считается от дат. */
 export type CompetitionStatus = 'upcoming' | 'active' | 'finished';
 
-/** Направление (используется для поиска, фильтра и цвета карточки). */
-export type Track = 'science' | 'art' | 'sport' | 'language' | 'tech';
+/** Направление конкурса (используется для поиска, фильтра и цвета карточки). */
+export type Track = 'science' | 'math' | 'sport' | 'language' | 'tech';
 
 /** Конкурс, созданный организатором. */
 export interface Competition {
@@ -93,7 +126,8 @@ export type ImportIssueReason =
   | 'unknown-student'
   | 'unknown-competition'
   | 'duplicate'
-  | 'bad-status';
+  | 'bad-status'
+  | 'bad-category';
 
 /** Полный результат импорта. */
 export interface ImportResult {

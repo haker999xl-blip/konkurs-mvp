@@ -1,24 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Фестиваль чтения: раскрытая книга и строки текста">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Фестиваль чтения: раскрытая книга и слова над страницами">
   <defs>
-    <linearGradient id="bgP" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#B4574A"/>
-      <stop offset="1" stop-color="#7E3A31"/>
-    </linearGradient>
+    <linearGradient id="bgP" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B4574A"/><stop offset="1" stop-color="#6F2F28"/></linearGradient>
   </defs>
+  <style>
+    .float{animation:float 5s ease-in-out infinite}.f2{animation-delay:-1.6s}.f3{animation-delay:-3.2s}
+    @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+    .flip{transform-origin:400px 280px;animation:flip 4.5s ease-in-out infinite}
+    @keyframes flip{0%,55%{transform:scaleX(1);opacity:1}75%{transform:scaleX(-1);opacity:.9}76%,100%{transform:scaleX(1);opacity:0}}
+    .glow{animation:glow 3s ease-in-out infinite alternate}
+    @keyframes glow{from{opacity:.55}to{opacity:1}}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important}.flip{opacity:0}}
+  </style>
   <rect width="800" height="520" fill="url(#bgP)"/>
-  <g opacity="0.14" fill="#F4F2ED">
-    <circle cx="120" cy="90" r="120"/><circle cx="720" cy="470" r="160"/>
+  <circle cx="120" cy="100" r="130" fill="#F4F2ED" fill-opacity=".1"/><circle cx="730" cy="470" r="170" fill="#F4F2ED" fill-opacity=".1"/>
+  <!-- книга -->
+  <path d="M400 190 C350 160 275 158 215 180 L215 392 C275 370 350 372 400 402 Z" fill="#FBF3E6" fill-opacity=".14"/>
+  <path d="M400 190 C450 160 525 158 585 180 L585 392 C525 370 450 372 400 402 Z" fill="#FBF3E6" fill-opacity=".14"/>
+  <g fill="none" stroke="#FBF3E6" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M400 190 C350 160 275 158 215 180 L215 392 C275 370 350 372 400 402 Z"/>
+    <path d="M400 190 C450 160 525 158 585 180 L585 392 C525 370 450 372 400 402 Z"/>
+    <path d="M400 190 V402"/>
   </g>
-  <g fill="none" stroke="#FBF3E6" stroke-width="6" stroke-linejoin="round" opacity="0.95">
-    <path d="M400 190 C350 160 280 158 230 176 L230 380 C280 362 350 364 400 394 Z"/>
-    <path d="M400 190 C450 160 520 158 570 176 L570 380 C520 362 450 364 400 394 Z"/>
-    <path d="M400 190 L400 394"/>
+  <g fill="none" stroke="#E9C57F" stroke-width="5" stroke-linecap="round" class="glow">
+    <path d="M255 235 h100"/><path d="M255 268 h100"/><path d="M255 301 h74"/><path d="M255 334 h92"/>
+    <path d="M445 235 h100"/><path d="M445 268 h84"/><path d="M445 301 h100"/><path d="M445 334 h62"/>
   </g>
-  <g fill="none" stroke="#E9C57F" stroke-width="5" stroke-linecap="round" opacity="0.9">
-    <path d="M268 230 h96"/><path d="M268 264 h96"/><path d="M268 298 h72"/>
-    <path d="M436 230 h96"/><path d="M436 264 h96"/><path d="M436 298 h64"/>
+  <g class="flip"><path d="M400 190 C450 160 525 158 585 180 L585 392 C525 370 450 372 400 402 Z" fill="#FBF3E6" fill-opacity=".3" stroke="#FBF3E6" stroke-width="3"/></g>
+  <!-- слова над книгой -->
+  <g font-family="Georgia,'Times New Roman',serif" font-style="italic" fill="#FBF3E6">
+    <text class="float" x="150" y="150" font-size="44" fill-opacity=".9">«</text>
+    <text class="float f2" x="620" y="170" font-size="34" fill-opacity=".8">рифма</text>
+    <text class="float f3" x="110" y="330" font-size="30" fill-opacity=".7">ритм</text>
+    <text class="float f2" x="640" y="330" font-size="48" fill="#E9C57F" fill-opacity=".9">»</text>
   </g>
-  <g stroke="#FBF3E6" stroke-width="4" stroke-linecap="round" opacity="0.55">
-    <path d="M138 132 v54"/><path d="M111 159 h54"/>
-  </g>
+  <g class="float f3" fill="#E9C57F"><circle cx="330" cy="120" r="6"/><circle cx="480" cy="104" r="4" fill-opacity=".7"/></g>
 </svg>

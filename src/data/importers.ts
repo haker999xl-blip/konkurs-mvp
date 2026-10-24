@@ -1,9 +1,15 @@
-import type { ImportIssue, ImportIssueReason, ImportResult, ParticipationStatus } from './types';
-import type { Repository } from './repository';
-import { todayIso } from './utils';
+import type {
+  Achievement,
+  AchievementCategory,
+  ImportIssue,
+  ImportIssueReason,
+  ImportResult,
+  User,
+} from './types';
+import { ACHIEVEMENT_CATEGORIES } from './categories';
 
 /**
- * Парсер CSV. Поддерживает кавычки, экранированные кавычки «""» и запятые внутри ячеек.
+ * Парсер CSV. Поддерживает кавычки, экранированные кавычки «""» и разделители внутри ячеек.
  * Возвращает массив строк (каждая — массив ячеек). Пустые строки отбрасываются.
  */
 export function parseCsv(text: string): string[][] {
@@ -59,46 +65,79 @@ export function parseCsv(text: string): string[][] {
 /** Ожидаемые заголовки в CSV/JSON. Латиница, чтобы файл был стабилен в Excel. */
 const FIELD_ALIASES = {
   student: ['student', 'ученик', 'фио', 'name'],
-  competition: ['competition', 'конкурс', 'competition_id', 'competitionid'],
+  grade: ['grade', 'класс'],
+  category: ['category', 'категория'],
+  title: ['title', 'achievement', 'название', 'достижение'],
+  points: ['points', 'score', 'баллы', 'балл'],
+  date: ['date', 'awardedon', 'awarded_on', 'дата'],
   status: ['status', 'статус'],
-  score: ['score', 'баллы', 'балл'],
-  date: ['date', 'дата', 'registeredat', 'registered_at'],
 } as const;
 
-const STATUS_MAP: Record<string, ParticipationStatus> = {
-  pending: 'pending',
-  ожидает: 'pending',
-  approved: 'approved',
-  подтверждено: 'approved',
-  rejected: 'rejected',
-  отклонено: 'rejected',
+type FieldKey = keyof typeof FIELD_ALIASES;
+
+const CATEGORY_MAP: Record<string, AchievementCategory> = {
+  academic: 'academic',
+  учёба: 'academic',
+  учеба: 'academic',
+  'академические успехи': 'academic',
+  olympiad: 'olympiad',
+  олимпиада: 'olympiad',
+  project: 'project',
+  проект: 'project',
+  volunteer: 'volunteer',
+  волонтёрство: 'volunteer',
+  волонтерство: 'volunteer',
 };
 
-type ResolveTarget = {
-  students: { id: string; name: string }[];
-  competitions: { id: string; title: string }[];
-};
-
-function resolveStudent(raw: string, target: ResolveTarget): string | null {
-  const value = raw.trim().toLowerCase();
-  const found = target.students.find((s) => s.name.toLowerCase() === value || s.id === value);
-  return found?.id ?? null;
+/** Поля достижения, которые примет сервер (без служебных id/статусов). */
+export interface AchievementInput {
+  studentId: string;
+  category: AchievementCategory;
+  title: string;
+  awardedOn: string;
+  points: number;
 }
 
-function resolveCompetition(raw: string, target: ResolveTarget): string | null {
+/**
+ * Создание достижения: на предпросмотре — заглушка, при импорте — реальный вызов API.
+ * Возвращает признак «уже есть такое достижение» для проверки дубликатов.
+ */
+export interface ImportContext {
+  users: User[];
+  achievements: Achievement[];
+  /** `dryRun` — только проверка без записи: предпросмотр не должен создавать данные. */
+  dryRun?: boolean;
+  create: (input: AchievementInput) => Promise<unknown>;
+}
+
+type ResolveTarget = { students: User[] };
+
+function resolveStudent(raw: string, gradeRaw: string, target: ResolveTarget): User | null {
   const value = raw.trim().toLowerCase();
-  const found = target.competitions.find(
-    (c) => c.title.toLowerCase() === value || c.id === value,
-  );
-  return found?.id ?? null;
+  const grade = gradeRaw.trim().toLowerCase();
+  const candidates = target.students.filter((s) => s.id === value || s.name.toLowerCase() === value);
+  if (candidates.length === 0) return null;
+  if (grade) {
+    const byGrade = candidates.find((s) => s.grade.toLowerCase() === grade);
+    if (byGrade) return byGrade;
+  }
+  return candidates[0];
 }
 
 /** Нормализует заголовки и находит индексы ключевых полей. */
-function buildHeaderMap(header: string[]): Record<keyof typeof FIELD_ALIASES, number> {
-  const map = { student: -1, competition: -1, status: -1, score: -1, date: -1 };
+function buildHeaderMap(header: string[]): Record<FieldKey, number> {
+  const map: Record<FieldKey, number> = {
+    student: -1,
+    grade: -1,
+    category: -1,
+    title: -1,
+    points: -1,
+    date: -1,
+    status: -1,
+  };
   header.forEach((cell, index) => {
     const key = cell.toLowerCase().replace(/[\s-]/g, '');
-    (Object.keys(FIELD_ALIASES) as (keyof typeof FIELD_ALIASES)[]).forEach((field) => {
+    (Object.keys(FIELD_ALIASES) as FieldKey[]).forEach((field) => {
       if (map[field] === -1 && FIELD_ALIASES[field].some((alias) => alias === key)) {
         map[field] = index;
       }
@@ -109,9 +148,10 @@ function buildHeaderMap(header: string[]): Record<keyof typeof FIELD_ALIASES, nu
 
 interface ImportInput {
   rows: string[][];
-  header: Record<keyof typeof FIELD_ALIASES, number>;
-  target: ResolveTarget;
-  repo: Repository;
+  header: Record<FieldKey, number>;
+  context: ImportContext;
+  /** Промисы создания: вызывающий код дожидается их и узнаёт о реальных ошибках. */
+  pending: Promise<unknown>[];
   /** Смещение строки в оригинальном файле (для JSON, где строка — не строка CSV). */
   offset?: number;
 }
@@ -119,66 +159,89 @@ interface ImportInput {
 /**
  * Общая логика валидации строк: используется и CSV, и JSON.
  * Не бросает исключений: каждая проблема превращается в ImportIssue.
+ * Предпросмотр (`dryRun`) ничего не пишет; при импорте созданные записи
+ * складываются в `pending` — их ждёт вызывающий код, чтобы поймать ошибки сервера.
  */
-function importRows({ rows, header, target, repo, offset = 0 }: ImportInput): ImportResult {
+function importRows({ rows, header, context, offset = 0, pending }: ImportInput): ImportResult {
   const issues: ImportIssue[] = [];
   const seen = new Set<string>();
+  const studentOnly = context.users.filter((u) => u.role === 'student');
+  const today = new Date().toISOString().slice(0, 10);
   let accepted = 0;
 
   rows.forEach((cells, index) => {
     const line = index + 1 + offset;
     const raw = cells.join(' | ').slice(0, 200);
-    const studentRaw = header.student >= 0 ? (cells[header.student] ?? '') : '';
-    const competitionRaw = header.competition >= 0 ? (cells[header.competition] ?? '') : '';
-    const statusRaw = header.status >= 0 ? (cells[header.status] ?? '') : 'pending';
-    const scoreRaw = header.score >= 0 ? (cells[header.score] ?? '0') : '0';
-    const dateRaw = header.date >= 0 ? (cells[header.date] ?? '') : todayIso();
+    const pick = (field: FieldKey) => (header[field] >= 0 ? (cells[header[field]] ?? '') : '');
+
+    const studentRaw = pick('student');
+    const categoryRaw = pick('category');
+    const titleRaw = pick('title');
+    const pointsRaw = pick('points');
+    const dateRaw = pick('date');
 
     const fail = (reason: ImportIssueReason) => issues.push({ line, raw, reason });
 
-    if (!studentRaw && !competitionRaw) return fail('empty');
-    if (!studentRaw || !competitionRaw) return fail('missing-fields');
+    if (!studentRaw && !titleRaw) return fail('empty');
+    if (!studentRaw || !categoryRaw || !titleRaw) return fail('missing-fields');
 
-    const studentId = resolveStudent(studentRaw, target);
-    if (!studentId) return fail('unknown-student');
-    const competitionId = resolveCompetition(competitionRaw, target);
-    if (!competitionId) return fail('unknown-competition');
+    const student = resolveStudent(studentRaw, pick('grade'), { students: studentOnly });
+    if (!student) return fail('unknown-student');
 
-    const status = STATUS_MAP[statusRaw.trim().toLowerCase()];
-    if (!status) return fail('bad-status');
+    const category = CATEGORY_MAP[categoryRaw.trim().toLowerCase()];
+    if (!category) return fail('bad-category');
 
-    const score = Number(scoreRaw.replace(',', '.').trim());
-    if (!Number.isFinite(score)) return fail('missing-fields');
-    if (score < 0) return fail('negative-score');
-    if (score > 1000) return fail('score-out-of-range');
+    if (titleRaw.trim().length < 3) return fail('missing-fields');
 
-    const competition = repo.getCompetition(competitionId);
-    if (competition && score > competition.maxScore) return fail('score-out-of-range');
+    const points = Number(pointsRaw.replace(',', '.').trim() || '0');
+    if (!Number.isFinite(points)) return fail('missing-fields');
+    if (points < 0) return fail('negative-score');
+    if (points > 500 || !Number.isInteger(points)) return fail('score-out-of-range');
 
-    const key = `${studentId}::${competitionId}`;
+    const date = dateRaw.trim();
+    if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) return fail('missing-fields');
+    // Дата не должна переезжать (2026-02-31) и не может быть в будущем — как и на сервере.
+    if (date) {
+      const parsed = new Date(`${date}T00:00:00Z`);
+      if (Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== date) {
+        return fail('missing-fields');
+      }
+      if (date > today) return fail('missing-fields');
+    }
+
+    const key = `${student.id}::${category}::${titleRaw.trim().toLowerCase()}`;
     if (seen.has(key)) return fail('duplicate');
-    const existing = repo
-      .getParticipations()
-      .some((p) => p.studentId === studentId && p.competitionId === competitionId);
-    if (existing) return fail('duplicate');
+    const exists = context.achievements.some(
+      (a) =>
+        a.studentId === student.id &&
+        a.category === category &&
+        a.title.trim().toLowerCase() === titleRaw.trim().toLowerCase(),
+    );
+    if (exists) return fail('duplicate');
     seen.add(key);
 
-    repo.createParticipation({
-      competitionId,
-      studentId,
-      status,
-      score,
-      registeredAt: dateRaw || todayIso(),
-      comment: '',
-    });
+    if (!context.dryRun) {
+      pending.push(
+        context.create({
+          studentId: student.id,
+          category,
+          title: titleRaw.trim(),
+          awardedOn: date || today,
+          points,
+        }),
+      );
+    }
     accepted++;
   });
 
   return { accepted, rejected: issues.length, issues };
 }
 
-/** Импорт CSV: заголовок обязателен. Данные с ошибками не ломают базу. */
-export function importCsv(text: string, repo: Repository): ImportResult {
+/**
+ * Импорт CSV: заголовок обязателен. Данные с ошибками не ломают базу.
+ * `pending` получает промисы создания — без ожидания нельзя утверждать, что строки сохранены.
+ */
+export function importCsv(text: string, context: ImportContext, pending: Promise<unknown>[] = []): ImportResult {
   const cleaned = text.replace(/^\uFEFF/, '');
   const rows = parseCsv(cleaned);
   if (rows.length === 0) {
@@ -186,28 +249,20 @@ export function importCsv(text: string, repo: Repository): ImportResult {
   }
   const [headerRow, ...dataRows] = rows;
   const header = buildHeaderMap(headerRow);
-  if (header.student < 0 || header.competition < 0) {
+  if (header.student < 0 || header.title < 0 || header.category < 0) {
     return {
       accepted: 0,
       rejected: 0,
       issues: [
-        {
-          line: 1,
-          raw: headerRow.join(' | ').slice(0, 200),
-          reason: 'missing-fields',
-        },
+        { line: 1, raw: headerRow.join(' | ').slice(0, 200), reason: 'missing-fields' },
       ],
     };
   }
-  const target = {
-    students: repo.getUsers().filter((u) => u.role === 'student').map((u) => ({ id: u.id, name: u.name })),
-    competitions: repo.getCompetitions().map((c) => ({ id: c.id, title: c.title })),
-  };
-  return importRows({ rows: dataRows, header, target, repo, offset: 1 });
+  return importRows({ rows: dataRows, header, context, pending, offset: 1 });
 }
 
-/** Импорт JSON: [{student, competition, status, score, date}]. Терпит не-массивы. */
-export function importJson(text: string, repo: Repository): ImportResult {
+/** Импорт JSON: [{student, category, title, points, date}]. Терпит не-массивы. */
+export function importJson(text: string, context: ImportContext, pending: Promise<unknown>[] = []): ImportResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
@@ -223,16 +278,25 @@ export function importJson(text: string, repo: Repository): ImportResult {
     const entry = (item ?? {}) as Record<string, unknown>;
     return [
       String(entry.student ?? entry.ученик ?? entry.name ?? ''),
-      String(entry.competition ?? entry.конкурс ?? ''),
+      String(entry.grade ?? entry.класс ?? ''),
+      String(entry.category ?? entry.категория ?? ''),
+      String(entry.title ?? entry.achievement ?? entry.название ?? ''),
+      String(entry.points ?? entry.score ?? entry.баллы ?? '0'),
+      String(entry.date ?? entry.дата ?? ''),
       String(entry.status ?? entry.статус ?? 'pending'),
-      String(entry.score ?? entry.баллы ?? '0'),
-      String(entry.date ?? entry.дата ?? todayIso()),
     ];
   });
-  const header = { student: 0, competition: 1, status: 2, score: 3, date: 4 };
-  const target = {
-    students: repo.getUsers().filter((u) => u.role === 'student').map((u) => ({ id: u.id, name: u.name })),
-    competitions: repo.getCompetitions().map((c) => ({ id: c.id, title: c.title })),
+  const header: Record<FieldKey, number> = {
+    student: 0,
+    grade: 1,
+    category: 2,
+    title: 3,
+    points: 4,
+    date: 5,
+    status: 6,
   };
-  return importRows({ rows, header, target, repo, offset: 0 });
+  return importRows({ rows, header, context, pending, offset: 0 });
 }
+
+/** Подписи категорий — для примеров и подсказок в интерфейсе. */
+export const CATEGORY_HINT = ACHIEVEMENT_CATEGORIES.map((c) => c.id).join(' | ');

@@ -320,6 +320,40 @@
   color: var(--text-subtle);
 }
 
+/* Переключатель среза рейтинга: лицей ↔ классы. */
+.rating-switch {
+  display: inline-flex;
+  gap: var(--s-1);
+  padding: 4px;
+  margin-bottom: var(--s-5);
+  background: var(--n-100);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+}
+
+.rating-switch__btn {
+  padding: var(--s-2) var(--s-4);
+  border: 0;
+  border-radius: calc(var(--r-sm) - 2px);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: var(--fs-14);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+
+.rating-switch__btn:hover {
+  color: var(--text);
+}
+
+.rating-switch__btn--on {
+  background: var(--surface);
+  color: var(--primary-strong);
+  box-shadow: var(--shadow-1);
+}
+
 @media (max-width: 640px) {
   .podium {
     grid-template-columns: 1fr;

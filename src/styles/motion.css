@@ -1,0 +1,113 @@
+/* ===== Motion: появление страниц, каскад карточек, живые детали =====
+   Правила: движение только поясняет (появление, смена состояния), 240–600 мс,
+   transform/opacity без перерасчёта раскладки. Подключается после остальных стилей. */
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(18px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes dot-pulse {
+  0% { box-shadow: 0 0 0 0 currentColor; }
+  70% { box-shadow: 0 0 0 6px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+@keyframes shine {
+  from { transform: translateX(-120%) skewX(-18deg); }
+  to { transform: translateX(240%) skewX(-18deg); }
+}
+
+/* Страница целиком (ключ — путь, поэтому срабатывает при смене маршрута) */
+.page-enter {
+  animation: page-in 360ms var(--ease) backwards;
+}
+
+/* Афиша: карточки выезжают каскадом (--i задаёт порядок) */
+.poster-grid .card {
+  animation: rise-in 520ms var(--ease) backwards;
+  animation-delay: calc(var(--i, 0) * 70ms + 80ms);
+}
+
+/* Блик по обложке при наведении */
+.card__media {
+  position: relative;
+}
+
+.card__media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  transform: translateX(-120%) skewX(-18deg);
+  pointer-events: none;
+}
+
+.card:hover .card__media::after {
+  animation: shine 700ms var(--ease);
+}
+
+/* «Идёт приём» — живая точка */
+.status--active::before {
+  animation: dot-pulse 2s ease-out infinite;
+}
+
+/* Кабинет: плитки статистики и блоки */
+.stats .stat {
+  animation: rise-in 480ms var(--ease) backwards;
+}
+.stats .stat:nth-child(1) { animation-delay: 60ms; }
+.stats .stat:nth-child(2) { animation-delay: 130ms; }
+.stats .stat:nth-child(3) { animation-delay: 200ms; }
+.stats .stat:nth-child(4) { animation-delay: 270ms; }
+
+/* Рейтинг: подиум растёт «снизу вверх» — 3 → 2 → 1, затем строки таблицы */
+.podium__item {
+  animation: rise-in 560ms var(--ease) backwards;
+}
+.podium__item--3 { animation-delay: 60ms; }
+.podium__item--2 { animation-delay: 180ms; }
+.podium__item--1 { animation-delay: 320ms; }
+
+.table tbody tr {
+  animation: row-in 360ms var(--ease) backwards;
+}
+.table tbody tr:nth-child(1) { animation-delay: 400ms; }
+.table tbody tr:nth-child(2) { animation-delay: 450ms; }
+.table tbody tr:nth-child(3) { animation-delay: 500ms; }
+.table tbody tr:nth-child(4) { animation-delay: 550ms; }
+.table tbody tr:nth-child(5) { animation-delay: 600ms; }
+.table tbody tr:nth-child(n + 6) { animation-delay: 650ms; }
+
+/* Нажатие кнопки */
+.btn {
+  transition: transform var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Без движения: убираем и задержки, иначе блоки «моргнут» после паузы */
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .poster-grid .card,
+  .stats .stat,
+  .podium__item,
+  .table tbody tr,
+  .status--active::before,
+  .card:hover .card__media::after {
+    animation: none !important;
+  }
+}

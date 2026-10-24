@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useData } from '../state/useData';
-import { getRepository } from '../data/localRepository';
+import { useStore } from '../state/store';
+import { api } from '../data/api';
 import type { ImportResult } from '../data/types';
-import type { Repository as RepoContract } from '../data/repository';
+import type { ImportContext } from '../data/importers';
 import { importCsv, importJson } from '../data/importers';
 import { downloadReport } from '../data/exporter';
 
@@ -10,60 +10,42 @@ const REASON_LABEL: Record<string, string> = {
   empty: 'Пустая строка',
   'missing-fields': 'Не хватает полей',
   'negative-score': 'Отрицательные баллы',
-  'score-out-of-range': 'Баллы больше максимума конкурса',
+  'score-out-of-range': 'Баллы вне диапазона 0–500',
   'unknown-student': 'Ученик не найден в базе',
   'unknown-competition': 'Конкурс не найден',
-  duplicate: 'Дубликат заявки',
+  duplicate: 'Такое достижение уже есть',
   'bad-status': 'Неизвестный статус',
+  'bad-category': 'Неизвестная категория',
 };
 
-const SAMPLE_CSV = `student,competition,status,score,date
-Мария Соколова,Научные чтения «Первая гипотеза»,approved,88,2026-10-01
-Дмитрий Ковалёв,Фестиваль чтения «Своими словами»,approved,75,2026-10-02
-,Фестиваль чтения «Своими словами»,approved,50,2026-10-02
-Алина Ветрова,Кибертурнир «Быстрый ход»,pending,-10,2026-10-03
-Алина Ветрова,Кибертурнир «Быстрый ход»,approved,120,2026-10-03
-Игорь Лебедев,Несуществующий конкурс,approved,40,2026-10-04
-Игорь Лебедев,SpeakUp: конкурс speaking,approved,86,2026-10-04
+const SAMPLE_CSV = `student,grade,category,title,points,date
+Мария Соколова,8А,olympiad,Призёр городской олимпиады по физике,60,2026-10-01
+Дмитрий Ковалёв,8Б,project,Проект «Умная теплица»,45,2026-10-02
+,,academic,Пустая строка без ученика,10,2026-10-02
+Алина Ветрова,7А,olympiad,Олимпиада по математике,-10,2026-10-03
+Алина Ветрова,7А,unknown,Неизвестная категория,20,2026-10-03
+Игорь Лебедев,8А,volunteer,Экологическая акция «Чистый парк»,20,2026-10-04
+Мария Соколова,8А,olympiad,Призёр городской олимпиады по физике,60,2026-10-01
 `;
-
-/**
- * Заглушка репозитория для предпросмотра: читает живые данные,
- * но записывать участия не умеет. Так предпросмотр не портит базу.
- */
-function createDryRepository(real: RepoContract): RepoContract {
-  return new Proxy(real, {
-    get(target, prop, receiver) {
-      if (prop === 'createParticipation') {
-        return () => ({
-          id: 'dry',
-          competitionId: '',
-          studentId: '',
-          status: 'pending' as const,
-          score: 0,
-          registeredAt: '',
-          reviewedAt: null,
-          comment: '',
-        });
-      }
-      const value = Reflect.get(target, prop, receiver);
-      return typeof value === 'function' ? value.bind(target) : value;
-    },
-  });
-}
 
 interface Props {
   onDone: () => void;
 }
 
+/** Предпросмотр: считаем, что запись прошла, но в базу ничего не пишем. */
+function dryContext(context: ImportContext): ImportContext {
+  return { ...context, dryRun: true, create: () => Promise.resolve() };
+}
+
 export function ImportPanel({ onDone }: Props) {
-  const { competitions } = useData();
+  const { users, achievements, refresh } = useStore();
   const [preview, setPreview] = useState<ImportResult | null>(null);
   const [applied, setApplied] = useState<ImportResult | null>(null);
   const [fileName, setFileName] = useState('');
   const [fileText, setFileText] = useState('');
   const [isJsonFile, setIsJsonFile] = useState(false);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const handleFile = async (file: File) => {
     setError('');
@@ -71,8 +53,9 @@ export function ImportPanel({ onDone }: Props) {
     try {
       const text = await file.text();
       const isJson = file.name.toLowerCase().endsWith('.json');
-      const dry = createDryRepository(getRepository());
-      const result = isJson ? importJson(text, dry) : importCsv(text, dry);
+      const result = isJson
+        ? importJson(text, dryContext({ users, achievements, create: () => Promise.resolve() }))
+        : importCsv(text, dryContext({ users, achievements, create: () => Promise.resolve() }));
       setFileName(file.name);
       setFileText(text);
       setIsJsonFile(isJson);
@@ -82,13 +65,40 @@ export function ImportPanel({ onDone }: Props) {
     }
   };
 
-  /** Подтверждение: повторный разбор уже на живом репозитории — данные пишутся. */
-  const apply = () => {
+  /** Подтверждение: повторный разбор, теперь записи уходят на сервер. */
+  const apply = async () => {
     if (!preview || preview.accepted === 0) return;
-    const repo = getRepository();
-    const result = isJsonFile ? importJson(fileText, repo) : importCsv(fileText, repo);
-    setApplied(result);
-    onDone();
+    setBusy(true);
+    setError('');
+    const created: Promise<unknown>[] = [];
+    const context: ImportContext = {
+      users,
+      achievements,
+      create: (input) => api.createAchievement(input),
+    };
+    try {
+      const result = isJsonFile
+        ? importJson(fileText, context, created)
+        : importCsv(fileText, context, created);
+      // Строка считается принятой только если сервер её действительно сохранил.
+      const settled = await Promise.allSettled(created);
+      const failed = settled.filter((item) => item.status === 'rejected').length;
+      const applied: ImportResult = {
+        ...result,
+        accepted: result.accepted - failed,
+        rejected: result.rejected + failed,
+      };
+      setApplied(applied);
+      if (failed > 0) {
+        setError(`Сервер отклонил ${failed} из ${created.length} записей. Проверьте права и данные.`);
+      }
+      void refresh();
+      onDone();
+    } catch {
+      setError('Сервер отклонил импорт. Проверьте права и повторите.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const loadSample = () => {
@@ -111,8 +121,8 @@ export function ImportPanel({ onDone }: Props) {
           />
           <span className="dropzone__title">Выберите CSV или JSON</span>
           <span className="dropzone__hint">
-            Колонки: student, competition, status, score, date. Файл обрабатывается в
-            браузере и никуда не отправляется.
+            Колонки: student, grade, category, title, points, date. Достижения попадают
+            сразу подтверждёнными. Сначала показываем предпросмотр — база не меняется.
           </span>
         </label>
         <button className="btn btn--ghost" type="button" onClick={loadSample}>
@@ -120,7 +130,7 @@ export function ImportPanel({ onDone }: Props) {
         </button>
       </div>
 
-      <p className="muted">Доступно конкурсов: {competitions.length}.</p>
+      <p className="muted">Учеников в базе: {users.filter((u) => u.role === 'student').length}.</p>
 
       {error && (
         <div className="notice notice--error" role="alert">
@@ -168,8 +178,8 @@ export function ImportPanel({ onDone }: Props) {
           <button
             className="btn btn--primary"
             type="button"
-            onClick={apply}
-            disabled={preview.accepted === 0 || Boolean(applied)}
+            onClick={() => void apply()}
+            disabled={preview.accepted === 0 || Boolean(applied) || busy}
           >
             {applied ? 'Импортировано' : `Импортировать ${preview.accepted}`}
           </button>
@@ -185,15 +195,20 @@ export function ImportPanel({ onDone }: Props) {
   );
 }
 
-/** CSV-отчёт по активности: отдельная кнопка в админ-панели. */
+/** CSV-отчёт по достижениям: отдельная кнопка в админ-панели. */
 export function ReportPanel() {
+  const { users, achievements } = useStore();
   return (
     <div className="report-callout">
       <p className="report-callout__text">
-        Отчёт по активности всей школы: ученик, класс, конкурс, статус, баллы, дата.
+        Отчёт по всем достижениям лицея: ученик, класс, категория, статус, баллы, дата.
         Открывается в Excel без кракозябр.
       </p>
-      <button className="btn btn--ghost" type="button" onClick={() => downloadReport(getRepository())}>
+      <button
+        className="btn btn--ghost"
+        type="button"
+        onClick={() => downloadReport(users, achievements)}
+      >
         Выгрузить отчёт CSV
       </button>
     </div>

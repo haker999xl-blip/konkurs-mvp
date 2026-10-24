@@ -222,7 +222,7 @@
   flex-wrap: wrap;
 }
 
-/* ===== Общие заголовки секций ===== */
+/* Общие заголовки секций */
 .page-head {
   display: flex;
   align-items: flex-end;

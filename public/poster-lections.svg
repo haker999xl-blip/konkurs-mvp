@@ -1,25 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Научные чтения: колбы и график гипотезы">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520" role="img" aria-label="Научные чтения: колба с пузырьками и график гипотезы">
   <defs>
-    <linearGradient id="bgL" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2E6B62"/>
-      <stop offset="1" stop-color="#1B4842"/>
-    </linearGradient>
+    <linearGradient id="bgL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#2E6B62"/><stop offset="1" stop-color="#173F39"/></linearGradient>
+    <linearGradient id="liqL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2D79A"/><stop offset="1" stop-color="#D9A94F"/></linearGradient>
+    <clipPath id="flaskL"><path d="M372 130 h56 v62 l62 118 a34 34 0 0 1 -30 50 h-120 a34 34 0 0 1 -30 -50 l62 -118 z"/></clipPath>
   </defs>
+  <style>
+    .rise{animation:rise 3.6s ease-in infinite}
+    .r2{animation-delay:-1.2s}.r3{animation-delay:-2.4s}
+    @keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:.9}100%{transform:translateY(-120px);opacity:0}}
+    .draw{stroke-dasharray:620;stroke-dashoffset:620;animation:draw 3.2s .3s ease-out forwards}
+    @keyframes draw{to{stroke-dashoffset:0}}
+    .wave{animation:wave 4s ease-in-out infinite alternate}
+    @keyframes wave{from{transform:translateX(-30px)}to{transform:translateX(30px)}}
+    .orbit{transform-origin:640px 220px;animation:spin 14s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (prefers-reduced-motion:reduce){*{animation:none!important}.draw{stroke-dashoffset:0}}
+  </style>
   <rect width="800" height="520" fill="url(#bgL)"/>
-  <g opacity="0.12" stroke="#F4F2ED" stroke-width="1">
-    <path d="M0 420 L800 340"/><path d="M0 460 L800 380"/><path d="M0 380 L800 300"/>
+  <g stroke="#F4F2ED" stroke-opacity=".08" stroke-width="1">
+    <path d="M0 130H800M0 210H800M0 290H800M0 370H800M0 450H800"/><path d="M100 0V520M200 0V520M300 0V520M400 0V520M500 0V520M600 0V520M700 0V520"/>
   </g>
-  <g fill="none" stroke="#F4F2ED" stroke-width="3" opacity="0.9">
-    <path d="M150 380 L150 240 L210 240 L210 330 L240 330 L240 200 L300 200 L300 300"/>
+  <!-- график гипотезы -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M70 380 H260" stroke="#F4F2ED" stroke-opacity=".35" stroke-width="3"/>
+    <path d="M70 380 V170" stroke="#F4F2ED" stroke-opacity=".35" stroke-width="3"/>
+    <path class="draw" d="M80 360 C120 340 140 300 170 290 S220 230 255 190" stroke="#E9C57F" stroke-width="6" pathLength="620"/>
   </g>
-  <g opacity="0.9">
-    <path d="M430 150 h60 v40 l40 110 a32 32 0 0 1 -30 44 h-80 a32 32 0 0 1 -30 -44 l40 -110 z" fill="none" stroke="#E9C57F" stroke-width="6" stroke-linejoin="round"/>
-    <path d="M424 268 h72 a30 30 0 0 1 -28 44 h-16 a30 30 0 0 1 -28 -44 z" fill="#E9C57F" opacity="0.55"/>
-    <circle cx="596" cy="212" r="10" fill="#E9C57F"/>
-    <circle cx="640" cy="268" r="6" fill="#E9C57F" opacity="0.7"/>
-    <circle cx="588" cy="318" r="8" fill="#E9C57F" opacity="0.5"/>
+  <circle cx="255" cy="190" r="9" fill="#E9C57F"/>
+  <circle cx="255" cy="190" r="9" fill="none" stroke="#E9C57F" stroke-width="3"><animate attributeName="r" values="9;24" dur="2s" repeatCount="indefinite"/><animate attributeName="opacity" values=".8;0" dur="2s" repeatCount="indefinite"/></circle>
+  <!-- колба -->
+  <g clip-path="url(#flaskL)">
+    <rect x="330" y="250" width="140" height="120" fill="url(#liqL)"/>
+    <g class="wave"><path d="M290 252 q20 -12 40 0 t40 0 t40 0 t40 0 t40 0 t40 0 V300 H290 z" fill="url(#liqL)"/></g>
+    <g fill="#FBF3E6" fill-opacity=".85">
+      <circle class="rise" cx="385" cy="335" r="7"/><circle class="rise r2" cx="420" cy="345" r="5"/><circle class="rise r3" cx="402" cy="330" r="4"/>
+    </g>
   </g>
-  <g stroke="#F4F2ED" stroke-width="5" stroke-linecap="round" opacity="0.85">
-    <path d="M90 96 h120"/><path d="M90 120 h72"/>
+  <path d="M372 130 h56 v62 l62 118 a34 34 0 0 1 -30 50 h-120 a34 34 0 0 1 -30 -50 l62 -118 z" fill="none" stroke="#FBF3E6" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M362 130 h76" stroke="#FBF3E6" stroke-width="7" stroke-linecap="round"/>
+  <!-- атом -->
+  <g fill="none" stroke="#F4F2ED" stroke-opacity=".55" stroke-width="3">
+    <ellipse cx="640" cy="220" rx="78" ry="30"/><ellipse cx="640" cy="220" rx="78" ry="30" transform="rotate(60 640 220)"/><ellipse cx="640" cy="220" rx="78" ry="30" transform="rotate(120 640 220)"/>
   </g>
+  <circle cx="640" cy="220" r="12" fill="#E9C57F"/>
+  <g class="orbit"><circle cx="718" cy="220" r="8" fill="#FBF3E6"/></g>
 </svg>

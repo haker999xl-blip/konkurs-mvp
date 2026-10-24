@@ -13,6 +13,7 @@ export function usePriceBump(value: number): boolean {
     prev.current = value;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) return;
+    // Смена значения — внешнее событие для эффекта: подсветку зажигаем здесь осознанно.
     setBump(true);
     const timer = window.setTimeout(() => setBump(false), 520);
     return () => window.clearTimeout(timer);

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/index.js",
+    "smoke": "node server/smoke.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",

@@ -1,5 +1,5 @@
 ﻿import { NavLink, Link } from 'react-router-dom';
-import { useSession } from '../state/session';
+import { useStore } from '../state/store';
 
 /** Иконки: инлайновые SVG, без emoji и без иконочных библиотек. */
 function Icon({ size = 20 }: { size?: number }) {
@@ -32,7 +32,7 @@ function initials(name: string): string {
 }
 
 export function Header() {
-  const { user, logout } = useSession();
+  const { user, logout } = useStore();
 
   if (!user) return null;
 
@@ -53,10 +53,10 @@ export function Header() {
     <header className="header">
       <div className="container header__inner">
         <Link to="/" className="brand" aria-label="На главную">
-          <span className="brand__mark" aria-hidden="true">К</span>
+          <span className="brand__mark" aria-hidden="true">Д</span>
           <span className="brand__text">
-            <span className="brand__name">Конкурс</span>
-            <span className="brand__sub">школьная платформа</span>
+            <span className="brand__name">Достижения</span>
+            <span className="brand__sub">платформа лицея</span>
           </span>
         </Link>
 
@@ -86,7 +86,10 @@ export function Header() {
           <button
             className="icon-btn"
             type="button"
-            onClick={logout}
+            onClick={() => {
+              // Ошибку выхода не показываем: локальная сессия сбрасывается в любом случае.
+              void logout().catch(() => undefined);
+            }}
             aria-label="Выйти из аккаунта"
             title="Выйти"
           >
@@ -102,8 +105,8 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="container footer__inner">
-        <span>Конкурс — платформа школьных конкурсов для 7–8 классов</span>
-        <span>Демо-прототип. Данные хранятся локально в браузере.</span>
+        <span>Достижения — платформа достижений учеников лицея</span>
+        <span>Данные хранятся в базе SQLite на сервере.</span>
       </div>
     </footer>
   );

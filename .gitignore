@@ -12,8 +12,15 @@ dist
 dist-ssr
 *.local
 
+# База SQLite и её WAL-файлы
+data/
+*.db
+*.db-shm
+*.db-wal
+
 # Артефакты проверки и скриншоты
 .playwright-mcp/
+.devlog.txt
 *.png
 !public/*.png
 

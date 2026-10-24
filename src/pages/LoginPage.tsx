@@ -1,116 +1,359 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useSession } from '../state/session';
+import { api, ApiError } from '../data/api';
+import type { User } from '../data/types';
+import { useStore } from '../state/store';
+
+type Mode = 'quick' | 'login' | 'register';
+
+const DEMO_PASSWORD_HINT = 'Демо-пароль всех аккаунтов: demo1234';
 
 /**
- * Вход — симуляция: без пароля, выбор из seed-аккаунтов.
- * Задача экрана: за один клик дать и ученика, и организатора для демо.
+ * Вход с двумя режимами — специально для показа:
+ *  • «Быстрый вход» — выбор аккаунта из списка, один клик, без пароля;
+ *  • «Вход и регистрация» — настоящая форма с паролем и проверкой.
+ * Переключатель сверху карточки, режим запоминается в sessionStorage,
+ * чтобы на защите не искать его заново после перезагрузки.
  */
 export function LoginPage() {
-  const { users, login } = useSession();
+  const { user, login, demoLogin, register } = useStore();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<string>('');
-  const [error, setError] = useState(false);
 
-  const students = users.filter((u) => u.role === 'student');
-  const teachers = users.filter((u) => u.role === 'teacher');
+  const [mode, setMode] = useState<Mode>(() => {
+    const saved = sessionStorage.getItem('hackathon.login-mode');
+    return saved === 'login' || saved === 'register' ? saved : 'quick';
+  });
+  const [accounts, setAccounts] = useState<User[]>([]);
+  const [accountsError, setAccountsError] = useState('');
+  const [selected, setSelected] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const [name, setName] = useState('');
+  const [grade, setGrade] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'student' | 'teacher'>('student');
+  const [subject, setSubject] = useState('');
+
+  /**
+   * После входа ученик идёт в кабинет, организатор — в админ-панель.
+   * Переход делает только этот эффект: дублировать его вручную после запроса нельзя,
+   * иначе история получит два одинаковых перехода подряд.
+   */
+  useEffect(() => {
+    if (user) navigate(user.role === 'teacher' ? '/admin' : '/cabinet', { replace: true });
+  }, [user, navigate]);
+
+  /** Список аккаунтов для быстрого режима; сам режим работает без него. */
+  useEffect(() => {
+    if (mode !== 'quick' || accounts.length) return;
+    api
+      .demoAccounts()
+      .then(({ accounts: list }) => {
+        setAccounts(list);
+        if (list.length) setSelected((prev) => prev || list[0].id);
+      })
+      .catch(() => setAccountsError('Быстрый вход недоступен — войдите по паролю.'));
+  }, [mode, accounts.length]);
+
+  const switchMode = (next: Mode) => {
+    sessionStorage.setItem('hackathon.login-mode', next);
+    setMode(next);
+    setError('');
+  };
+
+  const goAfterLogin = (next: User) => {
+    // Тот же путь, что и в эффекте выше, и с replace: двойной navigate не плодит историю.
+    navigate(next.role === 'teacher' ? '/admin' : '/cabinet', { replace: true });
+  };
+
+  const handleQuick = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!selected) {
-      setError(true);
+      setError('Выберите, под кем войти.');
       return;
     }
-    const user = users.find((u) => u.id === selected);
-    login(selected);
-    navigate(user?.role === 'teacher' ? '/admin' : '/cabinet');
+    setBusy(true);
+    setError('');
+    try {
+      const next = await demoLogin(selected);
+      goAfterLogin(next);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось войти');
+    } finally {
+      setBusy(false);
+    }
   };
+
+  const handleAuth = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const next =
+        mode === 'login'
+          ? await login(name, grade, password)
+          : await register({ name, grade, password, role, subject });
+      goAfterLogin(next);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Не удалось войти');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const students = accounts.filter((u) => u.role === 'student');
+  const teachers = accounts.filter((u) => u.role === 'teacher');
 
   return (
     <main className="auth">
       <section className="auth__intro" aria-labelledby="auth-title">
-        <p className="auth__eyebrow">Платформа школьных конкурсов</p>
+        <p className="auth__eyebrow">Достижения лицея</p>
         <h1 id="auth-title" className="auth__title">
-          Все конкурсы школы — в одном месте
+          Достижения учеников — в одном месте
         </h1>
         <p className="auth__lead">
-          Ученики находят конкурсы и забирают дипломы. Учителя собирают заявки и
-          выгружают отчёт без Excel-марафона.
+          Ученик заявляет достижение сам, организатор проверяет — баллы сразу идут
+          в рейтинг лицея и класса.
         </p>
         <ul className="auth__facts">
-          <li>Афиша, заявки, баллы и дипломы</li>
-          <li>Импорт участников за один шаг</li>
-          <li>Отчёт, который открывается в Excel</li>
+          <li>Категории, баллы и подтверждение</li>
+          <li>Рейтинг по лицею и по классам</li>
+          <li>Олимпиады по физике, математике и информатике</li>
         </ul>
       </section>
 
-      <form className="auth__card" onSubmit={handleSubmit} noValidate>
-        <h2 className="auth__card-title">Вход в демо</h2>
-        <p className="auth__hint">Пароль не нужен: выберите одну из учётных записей.</p>
+      <div className="auth__card">
+        <div className="auth__switch" role="tablist" aria-label="Способ входа">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'quick'}
+            className={`auth__switch-btn${mode === 'quick' ? ' auth__switch-btn--on' : ''}`}
+            onClick={() => switchMode('quick')}
+          >
+            Быстрый вход
+            <span className="auth__switch-note">для показа</span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode !== 'quick'}
+            className={`auth__switch-btn${mode !== 'quick' ? ' auth__switch-btn--on' : ''}`}
+            onClick={() => switchMode('login')}
+          >
+            Вход по паролю
+            <span className="auth__switch-note">как настоящий</span>
+          </button>
+        </div>
 
-        <fieldset className="auth__group">
-          <legend>Ученик</legend>
-          {students.map((user) => (
-            <label key={user.id} className={`account${selected === user.id ? ' account--on' : ''}`}>
-              <input
-                type="radio"
-                name="account"
-                value={user.id}
-                checked={selected === user.id}
-                onChange={() => {
-                  setSelected(user.id);
-                  setError(false);
-                }}
-              />
-              <span className="account__avatar" aria-hidden="true">
-                {user.name.slice(0, 1)}
-              </span>
-              <span className="account__body">
-                <span className="account__name">{user.name}</span>
-                <span className="account__meta">
-                  {user.grade} класс
-                  {user.id === 'u-student-masha' ? ' · основной демо-аккаунт' : ''}
+        {mode === 'quick' ? (
+          <form onSubmit={handleQuick} noValidate>
+            <p className="auth__hint">
+              Выберите аккаунт — один клик и вы в нужной роли. {DEMO_PASSWORD_HINT}
+            </p>
+
+            {accountsError && (
+              <p className="field-error" role="alert">
+                {accountsError}
+              </p>
+            )}
+
+            {students.length > 0 && (
+              <fieldset className="auth__group">
+                <legend>Ученик</legend>
+                {students.map((account) => (
+                  <label
+                    key={account.id}
+                    className={`account${selected === account.id ? ' account--on' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="account"
+                      value={account.id}
+                      checked={selected === account.id}
+                      onChange={() => {
+                        setSelected(account.id);
+                        setError('');
+                      }}
+                    />
+                    <span className="account__avatar" aria-hidden="true">
+                      {account.name.slice(0, 1)}
+                    </span>
+                    <span className="account__body">
+                      <span className="account__name">{account.name}</span>
+                      <span className="account__meta">
+                        {account.grade} класс
+                        {account.id === 'u-student-masha' ? ' · основной демо-аккаунт' : ''}
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            )}
+
+            {teachers.length > 0 && (
+              <fieldset className="auth__group">
+                <legend>Организатор</legend>
+                {teachers.map((account) => (
+                  <label
+                    key={account.id}
+                    className={`account${selected === account.id ? ' account--on' : ''}`}
+                  >
+                    <input
+                      type="radio"
+                      name="account"
+                      value={account.id}
+                      checked={selected === account.id}
+                      onChange={() => {
+                        setSelected(account.id);
+                        setError('');
+                      }}
+                    />
+                    <span className="account__avatar account__avatar--teacher" aria-hidden="true">
+                      {account.name.slice(0, 1)}
+                    </span>
+                    <span className="account__body">
+                      <span className="account__name">{account.name}</span>
+                      <span className="account__meta">{account.subject}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+            )}
+
+            {error && (
+              <p className="field-error" role="alert">
+                {error}
+              </p>
+            )}
+
+            <button className="btn btn--primary auth__submit" type="submit" disabled={busy}>
+              {busy ? 'Входим…' : 'Войти'}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleAuth} noValidate>
+            <div className="auth__tabs" role="group" aria-label="Вход или регистрация">
+              <button
+                type="button"
+                className={`auth__tab${mode === 'login' ? ' auth__tab--on' : ''}`}
+                onClick={() => switchMode('login')}
+              >
+                Вход
+              </button>
+              <button
+                type="button"
+                className={`auth__tab${mode === 'register' ? ' auth__tab--on' : ''}`}
+                onClick={() => switchMode('register')}
+              >
+                Регистрация
+              </button>
+            </div>
+
+            {mode === 'register' && (
+              <fieldset className="auth__group auth__group--roles">
+                <legend>Кто вы</legend>
+                <label className={`account${role === 'student' ? ' account--on' : ''}`}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="student"
+                    checked={role === 'student'}
+                    onChange={() => setRole('student')}
+                  />
+                  <span className="account__body">
+                    <span className="account__name">Ученик</span>
+                    <span className="account__meta">Добавляю свои достижения</span>
+                  </span>
+                </label>
+                <label className={`account${role === 'teacher' ? ' account--on' : ''}`}>
+                  <input
+                    type="radio"
+                    name="role"
+                    value="teacher"
+                    checked={role === 'teacher'}
+                    onChange={() => setRole('teacher')}
+                  />
+                  <span className="account__body">
+                    <span className="account__name">Организатор</span>
+                    <span className="account__meta">Проверяю достижения учеников</span>
+                  </span>
+                </label>
+              </fieldset>
+            )}
+
+            <div className="auth__fields">
+              <label className="field">
+                <span>Имя и фамилия</span>
+                <input
+                  className="input"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder="Мария Соколова"
+                  autoComplete="name"
+                  required
+                />
+              </label>
+
+              <label className="field">
+                <span>
+                  {role === 'teacher'
+                    ? mode === 'register'
+                      ? 'Кабинет или предмет'
+                      : 'Класс или кабинет (необязательно)'
+                    : 'Класс'}
                 </span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
+                <input
+                  className="input"
+                  value={grade}
+                  onChange={(event) => setGrade(event.target.value)}
+                  placeholder={role === 'teacher' ? 'Кабинет физики' : '8А'}
+                  autoComplete="off"
+                  required={!(role === 'teacher' && mode === 'login')}
+                />
+              </label>
 
-        <fieldset className="auth__group">
-          <legend>Организатор</legend>
-          {teachers.map((user) => (
-            <label key={user.id} className={`account${selected === user.id ? ' account--on' : ''}`}>
-              <input
-                type="radio"
-                name="account"
-                value={user.id}
-                checked={selected === user.id}
-                onChange={() => {
-                  setSelected(user.id);
-                  setError(false);
-                }}
-              />
-              <span className="account__avatar account__avatar--teacher" aria-hidden="true">
-                {user.name.slice(0, 1)}
-              </span>
-              <span className="account__body">
-                <span className="account__name">{user.name}</span>
-                <span className="account__meta">{user.subject}</span>
-              </span>
-            </label>
-          ))}
-        </fieldset>
+              {mode === 'register' && role === 'teacher' && (
+                <label className="field">
+                  <span>Предмет</span>
+                  <input
+                    className="input"
+                    value={subject}
+                    onChange={(event) => setSubject(event.target.value)}
+                    placeholder="Физика, классное руководство 8А"
+                  />
+                </label>
+              )}
 
-        {error && (
-          <p className="field-error" role="alert">
-            Выберите, под кем войти: ученик или организатор.
-          </p>
+              <label className="field">
+                <span>Пароль</span>
+                <input
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder={mode === 'register' ? 'Минимум 6 символов, буквы и цифры' : 'demo1234'}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  required
+                />
+              </label>
+            </div>
+
+            {error && (
+              <p className="field-error" role="alert">
+                {error}
+              </p>
+            )}
+
+            <button className="btn btn--primary auth__submit" type="submit" disabled={busy}>
+              {busy ? 'Подождите…' : mode === 'login' ? 'Войти' : 'Создать аккаунт'}
+            </button>
+
+            {mode === 'login' && <p className="auth__hint">{DEMO_PASSWORD_HINT}</p>}
+          </form>
         )}
-
-        <button className="btn btn--primary auth__submit" type="submit">
-          Войти
-        </button>
-      </form>
+      </div>
     </main>
   );
 }

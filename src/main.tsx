@@ -7,15 +7,16 @@ import './styles/components.css'
 import './styles/poster.css'
 import './styles/admin.css'
 import './styles/cabinet.css'
+import './styles/motion.css'
 import App from './App'
-import { SessionProvider } from './state/session'
+import { StoreProvider } from './state/store'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <SessionProvider>
+      <StoreProvider>
         <App />
-      </SessionProvider>
+      </StoreProvider>
     </BrowserRouter>
   </StrictMode>,
 )

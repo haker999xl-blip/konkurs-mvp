@@ -1,4 +1,9 @@
-import type { Competition, Participation, User } from '../data/types';
+/**
+ * Рейтинг считается по подтверждённым достижениям.
+ * Два среза: по лицею (все ученики) и по классам (сумма класса).
+ * Никаких «сырых» баллов: pending и rejected в зачёт не идут.
+ */
+import type { Achievement, User } from '../data/types';
 
 export interface RatingEntry {
   student: User;
@@ -7,59 +12,86 @@ export interface RatingEntry {
   position: number;
 }
 
-/**
- * Рейтинг — производная от подтверждённых участий.
- * Суммирует баллы approved; сортировка по убыванию, позиция = индекс+1.
- */
-export function buildRating(users: User[], participations: Participation[]): RatingEntry[] {
-  const pointsByStudent = new Map<string, { points: number; approved: number }>();
-  participations
-    .filter((p) => p.status === 'approved')
-    .forEach((p) => {
-      const prev = pointsByStudent.get(p.studentId) ?? { points: 0, approved: 0 };
-      pointsByStudent.set(p.studentId, {
-        points: prev.points + p.score,
-        approved: prev.approved + 1,
-      });
-    });
-
-  return users
-    .filter((u) => u.role === 'student')
-    .map((student) => {
-      const stat = pointsByStudent.get(student.id) ?? { points: 0, approved: 0 };
-      return { student, points: stat.points, approved: stat.approved, position: 0 };
-    })
-    .sort((a, b) => b.points - a.points || a.student.name.localeCompare(b.student.name, 'ru'))
-    .map((entry, index) => ({ ...entry, position: index + 1 }));
+export interface ClassRatingEntry {
+  grade: string;
+  points: number;
+  approved: number;
+  /** Сколько учеников класса принесли хотя бы одно подтверждённое достижение. */
+  contributors: number;
+  students: number;
+  position: number;
 }
 
-/** Позиция ученика в рейтинге (0, если не найден). */
+/** Только подтверждённые достижения: единственный источник баллов. */
+export function approvedAchievements(achievements: Achievement[]): Achievement[] {
+  return achievements.filter((a) => a.status === 'approved');
+}
+
+/** Сумма подтверждённых баллов ученика. */
+export function studentScore(achievements: Achievement[], studentId: string): number {
+  return approvedAchievements(achievements)
+    .filter((a) => a.studentId === studentId)
+    .reduce((sum, a) => sum + a.points, 0);
+}
+
+/** Сумма подтверждённых баллов по всем ученикам. */
+export function totalScore(achievements: Achievement[]): number {
+  return approvedAchievements(achievements).reduce((sum, a) => sum + a.points, 0);
+}
+
+/** Рейтинг лицея: все ученики, включая нулевых — так честнее для показа. */
+export function buildRating(users: User[], achievements: Achievement[]): RatingEntry[] {
+  const approved = approvedAchievements(achievements);
+  const students = users.filter((u) => u.role === 'student');
+
+  const rows = students.map((student) => {
+    const own = approved.filter((a) => a.studentId === student.id);
+    return {
+      student,
+      points: own.reduce((sum, a) => sum + a.points, 0),
+      approved: own.length,
+    };
+  });
+
+  rows.sort((a, b) => b.points - a.points || a.student.name.localeCompare(b.student.name, 'ru'));
+  return rows.map((row, index) => ({ ...row, position: index + 1 }));
+}
+
+/** Рейтинг по классам: сумма баллов всех учеников класса. */
+export function buildClassRating(users: User[], achievements: Achievement[]): ClassRatingEntry[] {
+  const approved = approvedAchievements(achievements);
+  const students = users.filter((u) => u.role === 'student' && u.grade);
+  const grades = [...new Set(students.map((u) => u.grade))];
+
+  const rows = grades.map((grade) => {
+    const members = students.filter((u) => u.grade === grade);
+    const memberIds = new Set(members.map((u) => u.id));
+    const own = approved.filter((a) => memberIds.has(a.studentId));
+    const contributors = new Set(own.map((a) => a.studentId)).size;
+    return {
+      grade,
+      points: own.reduce((sum, a) => sum + a.points, 0),
+      approved: own.length,
+      contributors,
+      students: members.length,
+    };
+  });
+
+  rows.sort((a, b) => b.points - a.points || a.grade.localeCompare(b.grade, 'ru'));
+  return rows.map((row, index) => ({ ...row, position: index + 1 }));
+}
+
+/** Место ученика в рейтинге лицея. */
 export function studentPosition(rating: RatingEntry[], studentId: string): number {
   return rating.find((entry) => entry.student.id === studentId)?.position ?? 0;
 }
 
-/** Общее количество подтверждённых участий ученика. */
-export function approvedCount(participations: Participation[]): number {
-  return participations.filter((p) => p.status === 'approved').length;
+/** Сколько достижений ожидает проверки — для бейджа в админке. */
+export function pendingCount(achievements: Achievement[]): number {
+  return achievements.filter((a) => a.status === 'pending').length;
 }
 
-/** Сумма баллов ученика. */
-export function totalScore(participations: Participation[]): number {
-  return participations
-    .filter((p) => p.status === 'approved')
-    .reduce((sum, p) => sum + p.score, 0);
-}
-
-/** Максимально возможная сумма баллов по конкурсам, в которых ученик участвовал. */
-export function maxPossibleScore(
-  participations: Participation[],
-  competitions: Competition[],
-): number {
-  const byId = new Map(competitions.map((c) => [c.id, c]));
-  return participations.reduce((sum, p) => sum + (byId.get(p.competitionId)?.maxScore ?? 0), 0);
-}
-
-/** Прогресс к полному максимуму, 0..100. */
+/** Прогресс до потолка: сколько баллов ученик набрал от максимума по своим заявкам. */
 export function progressPercent(current: number, max: number): number {
   if (max <= 0) return 0;
   return Math.min(100, Math.round((current / max) * 100));

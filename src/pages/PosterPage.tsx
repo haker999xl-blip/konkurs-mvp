@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useData } from '../state/useData';
-import { useSession } from '../state/session';
+import { useStore } from '../state/store';
 import type { Competition, CompetitionStatus } from '../data/types';
+import { TRACKS } from '../data/seed';
 import {
   STATUS_LABEL,
   deadlineLabel,
@@ -11,16 +11,24 @@ import {
   trackLabel,
 } from '../data/utils';
 
+/** Пункты фильтра «Направление» — тот же справочник, что в формах и карточках. */
+const TRACK_OPTIONS = TRACKS.map((track) => ({ value: track.id, label: track.label }));
+
 interface CardProps {
   competition: Competition;
   status: CompetitionStatus;
   joined: boolean;
+  /** Порядковый номер карточки: задаёт задержку каскадного появления. */
+  index: number;
 }
 
 /** Карточка афиши: направление, сроки, статус и быстрый переход. */
-function CompetitionCard({ competition, status, joined }: CardProps) {
+function CompetitionCard({ competition, status, joined, index }: CardProps) {
   return (
-    <article className={`card card--${competition.track}`}>
+    <article
+      className={`card card--${competition.track}`}
+      style={{ '--i': index } as React.CSSProperties}
+    >
       <Link
         className="card__media"
         to={`/competition/${competition.id}`}
@@ -68,8 +76,7 @@ function CompetitionCard({ competition, status, joined }: CardProps) {
 }
 
 export function PosterPage() {
-  const { competitions, participations } = useData();
-  const { user } = useSession();
+  const { user, competitions, participations } = useStore();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'all' | CompetitionStatus>('all');
   const [track, setTrack] = useState<'all' | Competition['track']>('all');
@@ -87,7 +94,7 @@ export function PosterPage() {
         if (track !== 'all' && c.track !== track) return false;
         return true;
       })
-      .sort((a, b) => {
+      .toSorted((a, b) => {
         if (sort === 'deadline') return a.deadline.localeCompare(b.deadline);
         return a.startsAt.localeCompare(b.startsAt);
       });
@@ -108,7 +115,7 @@ export function PosterPage() {
   };
 
   return (
-    <div className="container">
+    <div>
       <div className="page-head">
         <div>
           <p className="page-head__eyebrow">Афиша · 7–8 классы</p>
@@ -151,11 +158,12 @@ export function PosterPage() {
             <span>Направление</span>
             <select value={track} onChange={(e) => setTrack(e.target.value as typeof track)}>
               <option value="all">Любое</option>
-              <option value="science">Наука</option>
-              <option value="art">Творчество</option>
-              <option value="sport">Спорт</option>
-              <option value="language">Языки</option>
-              <option value="tech">Технологии</option>
+              {/* Значения строго из Track: несуществующий трек даёт пустую выдачу. */}
+              {TRACK_OPTIONS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
             </select>
           </label>
 
@@ -185,12 +193,13 @@ export function PosterPage() {
         </div>
       ) : (
         <div className="poster-grid">
-          {visible.map((competition) => (
+          {visible.map((competition, index) => (
             <CompetitionCard
               key={competition.id}
               competition={competition}
               status={getCompetitionStatus(competition)}
               joined={myCompetitions.has(competition.id)}
+              index={index}
             />
           ))}
         </div>
